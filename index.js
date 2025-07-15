@@ -3,7 +3,7 @@ const { Client } = require("@notionhq/client");
 require("dotenv").config();
 
 const app = express();
-const port = 4000;
+const port = process.env.PORT; 
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 

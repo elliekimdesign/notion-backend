@@ -1,26 +1,48 @@
-const express = require("express");
-const { Client } = require("@notionhq/client");
-require("dotenv").config();
+const express = require('express');
+const { Client } = require('@notionhq/client');
+const cors = require('cors');
+require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT; 
+const PORT = process.env.PORT || 4000;
 
-const notion = new Client({ auth: process.env.NOTION_API_KEY });
+app.use(cors());
+app.use(express.json());
 
+// Notion 클라이언트 초기화
+const notion = new Client({
+  auth: process.env.NOTION_TOKEN,
+});
+
+const databaseId = process.env.NOTION_DATABASE_ID;
+
+// API 엔드포인트
 app.get('/api/words', async (req, res) => {
   try {
-    const response = await notion.databases.query({ database_id: databaseId });
-    const words = (response.results || []).map((row) => ({
-      word: row.properties?.Word?.title?.[0]?.plain_text || '',
-      meaning: row.properties?.Meaning?.rich_text?.[0]?.plain_text || '',
-      example: row.properties?.Example?.rich_text?.[0]?.plain_text || '',
-    })).filter((item) => item.word);
+    console.log('Fetching words from Notion...');
+    
+    const response = await notion.databases.query({
+      database_id: databaseId,
+    });
+
+    const words = response.results.map((page) => {
+      const properties = page.properties;
+      
+      return {
+        word: properties.Word?.title?.[0]?.text?.content || '',
+        meaning: properties.Meaning?.rich_text?.[0]?.text?.content || '',
+        example: properties.Example?.rich_text?.[0]?.text?.content || '',
+      };
+    });
+
+    console.log(`Found ${words.length} words`);
     res.json(words);
   } catch (error) {
-    res.status(500).json({ error: error.message, details: error });
+    console.error('Error fetching words:', error);
+    res.status(500).json({ error: 'Failed to fetch words' });
   }
 });
 
-app.listen(port, () => {
-  console.log(`✅ Server running at http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
